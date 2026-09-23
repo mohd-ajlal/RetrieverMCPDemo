@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Devices · Retriever{% endblock %}
+{% block content %}
+<section class="hero-block">
+  <p class="eyebrow">Inventory</p>
+  <h1>Devices</h1>
+  <p class="lede">Scoped to {% if active_organization %}{{ active_organization.name }}{% else %}no organization{% endif %}.</p>
+</section>
+<table class="data-table">
+  <thead>
+    <tr><th>Name</th><th>Type</th><th>Serial</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    {% for d in devices %}
+    <tr>
+      <td>{{ d.name }}</td>
+      <td>{{ d.device_type }}</td>
+      <td><code>{{ d.serial_number }}</code></td>
+      <td>{{ d.status }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">No devices.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

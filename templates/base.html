@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Retriever{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/retriever.css">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="page-{{ page|default:'app' }}">
+  <header class="topbar">
+    <a class="brand" href="{% if user.is_authenticated %}/dashboard/{% else %}/login/{% endif %}">
+      <span class="brand-mark"></span>
+      <span class="brand-name">Retriever</span>
+    </a>
+    {% if user.is_authenticated %}
+    <nav class="nav">
+      <a href="/dashboard/" class="{% if page == 'dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="/devices/" class="{% if page == 'devices' %}active{% endif %}">Devices</a>
+      <a href="/orders/" class="{% if page == 'orders' %}active{% endif %}">Orders</a>
+      <a href="/organization/" class="{% if page == 'organization' %}active{% endif %}">Organization</a>
+      <a href="/settings/connected-apps/" class="{% if page == 'connected_apps' %}active{% endif %}">Connected Apps</a>
+    </nav>
+    <div class="user-chip">
+      <span>{{ user.username }}</span>
+      {% if active_organization %}
+      <span class="sep">·</span>
+      <span class="org">{{ active_organization.name }}</span>
+      {% endif %}
+      <form method="post" action="/logout/" class="inline">
+        {% csrf_token %}
+        <button type="submit" class="linkish">Log out</button>
+      </form>
+    </div>
+    {% endif %}
+  </header>
+  <main class="main">
+    {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}
+      <li class="{{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <div id="react-root" data-page="{{ page|default:'' }}"></div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

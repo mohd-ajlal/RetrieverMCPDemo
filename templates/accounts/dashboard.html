@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Retriever{% endblock %}
+{% block content %}
+<section class="hero-block">
+  <p class="eyebrow">Retriever demo</p>
+  <h1>Welcome, {{ user.username }}</h1>
+  <p class="lede">
+    This dashboard uses Django session authentication.
+    Connect Claude via the MCP endpoint after granting consent on Retriever's OAuth screen.
+  </p>
+</section>
+
+<section class="grid-two">
+  <article class="panel">
+    <h2>Active organization</h2>
+    {% if active_organization %}
+    <p class="big">{{ active_organization.name }}</p>
+    {% else %}
+    <p>No organization selected.</p>
+    {% endif %}
+    {% if organization_memberships|length > 1 %}
+    <form method="post" action="{% url 'switch_organization' %}" class="stack-form compact">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="/dashboard/">
+      <label>
+        Switch organization
+        <select name="organization_id" class="input">
+          {% for m in organization_memberships %}
+          <option value="{{ m.organization_id }}" {% if active_organization and m.organization_id == active_organization.id %}selected{% endif %}>
+            {{ m.organization.name }} ({{ m.role }})
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="btn">Switch</button>
+    </form>
+    {% endif %}
+  </article>
+  <article class="panel">
+    <h2>MCP connector</h2>
+    <p>Public MCP URL (register in Claude Custom Connector):</p>
+    <code class="mono-block">{{ request.scheme }}://{{ request.get_host }}/mcp</code>
+    <p><a href="/settings/connected-apps/">Manage connected applications</a></p>
+  </article>
+</section>
+{% endblock %}

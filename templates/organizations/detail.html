@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Organization · Retriever{% endblock %}
+{% block content %}
+<section class="hero-block">
+  <p class="eyebrow">Organization</p>
+  <h1>{% if active_organization %}{{ active_organization.name }}{% else %}No organization{% endif %}</h1>
+  <p class="lede">MCP tools always use the organization bound at OAuth consent from your Retriever identity — never a client-supplied organization_id.</p>
+</section>
+
+<section class="panel">
+  <h2>Memberships</h2>
+  <ul class="plain-list">
+    {% for m in organization_memberships %}
+    <li>
+      <strong>{{ m.organization.name }}</strong>
+      <span class="muted">· {{ m.role }}</span>
+      {% if active_organization and m.organization_id == active_organization.id %}
+      <span class="badge ok">Active</span>
+      {% endif %}
+    </li>
+    {% empty %}
+    <li>No memberships.</li>
+    {% endfor %}
+  </ul>
+  {% if organization_memberships|length > 1 %}
+  <form method="post" action="{% url 'switch_organization' %}" class="stack-form compact">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="/organization/">
+    <label>
+      Set active organization
+      <select name="organization_id" class="input">
+        {% for m in organization_memberships %}
+        <option value="{{ m.organization_id }}" {% if active_organization and m.organization_id == active_organization.id %}selected{% endif %}>
+          {{ m.organization.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="btn">Update</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

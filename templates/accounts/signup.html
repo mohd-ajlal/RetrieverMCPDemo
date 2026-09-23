@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Create account · Retriever{% endblock %}
+{% block content %}
+<section class="auth-panel">
+  <p class="eyebrow">Retriever</p>
+  <h1>Create an account</h1>
+  <p class="lede">Register a user and organization. You can connect Claude after signing in.</p>
+  <form method="post" action="{% url 'signup' %}" class="stack-form" id="signup-form">
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    {% if form.non_field_errors %}
+    <div class="form-error">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <label>
+      Username
+      {{ form.username }}
+      {{ form.username.errors }}
+    </label>
+    <label>
+      Email <span class="muted">(optional)</span>
+      {{ form.email }}
+      {{ form.email.errors }}
+    </label>
+    <label>
+      Organization name
+      {{ form.organization_name }}
+      {{ form.organization_name.errors }}
+    </label>
+    <label>
+      Password
+      {{ form.password1 }}
+      {{ form.password1.errors }}
+    </label>
+    <label>
+      Confirm password
+      {{ form.password2 }}
+      {{ form.password2.errors }}
+    </label>
+    <button type="submit" class="btn primary">Create account</button>
+  </form>
+  <p class="auth-switch">
+    Already have an account?
+    <a class="text-link" href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Sign in</a>
+  </p>
+</section>
+{% endblock %}

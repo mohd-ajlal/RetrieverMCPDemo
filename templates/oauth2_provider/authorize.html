@@ -1,0 +1,64 @@
+{% extends "oauth2_provider/base.html" %}
+{% load i18n static %}
+
+{% block title %}Connect Claude to Retriever{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/retriever.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="consent-panel">
+  {% if not error %}
+  <p class="eyebrow">Retriever</p>
+  <h1>Connect {{ mcp_client_name|default:application.name }} to Retriever</h1>
+
+  <div class="consent-meta">
+    <div>
+      <span class="label">Signed in as</span>
+      <strong>{{ signed_in_user.username }}{% if signed_in_user.email %} · {{ signed_in_user.email }}{% endif %}</strong>
+    </div>
+    <div>
+      <span class="label">Organization</span>
+      <strong>{% if consent_organization %}{{ consent_organization.name }}{% else %}None selected{% endif %}</strong>
+    </div>
+  </div>
+
+  <p class="lede">{{ mcp_client_name|default:application.name }} is requesting access to:</p>
+  <ul class="scope-list">
+    {% for row in scope_rows %}
+    <li>
+      <span class="check" aria-hidden="true">✓</span>
+      <div>
+        <strong>{{ row.description }}</strong>
+        <code>{{ row.scope }}</code>
+      </div>
+    </li>
+    {% empty %}
+      {% for desc in scopes_descriptions %}
+      <li><span class="check">✓</span><div><strong>{{ desc }}</strong></div></li>
+      {% endfor %}
+    {% endfor %}
+  </ul>
+
+  <form id="authorizationForm" method="post" class="consent-actions">
+    {% csrf_token %}
+    {% for field in form %}
+      {% if field.is_hidden %}{{ field }}{% endif %}
+    {% endfor %}
+    {{ form.errors }}
+    {{ form.non_field_errors }}
+    <button type="submit" name="allow" value="Authorize" class="btn primary">Allow Access</button>
+    <button type="submit" class="btn danger">Deny</button>
+  </form>
+  <p class="hint">
+    Allow issues an authorization code to the OAuth client. Deny returns
+    <code>access_denied</code> and does not issue a token.
+    Client secrets and access tokens never appear in this page.
+  </p>
+  {% else %}
+  <h1>Authorization error</h1>
+  <p class="form-error"><strong>{{ error.error }}</strong> — {{ error.description }}</p>
+  {% endif %}
+</section>
+{% endblock %}

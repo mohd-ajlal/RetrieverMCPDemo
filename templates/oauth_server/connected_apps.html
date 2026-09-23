@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Connected Apps · Retriever{% endblock %}
+{% block content %}
+<section class="hero-block">
+  <p class="eyebrow">Settings</p>
+  <h1>Connected applications</h1>
+  <p class="lede">OAuth clients authorized to call Retriever MCP on your behalf. Disconnect revokes access tokens.</p>
+</section>
+
+{% if connected_apps %}
+<ul class="app-list">
+  {% for item in connected_apps %}
+  <li class="panel">
+    <div class="app-head">
+      <h2>{{ item.application.name }}</h2>
+      <span class="badge ok">Connected</span>
+    </div>
+    <p class="label">Permissions</p>
+    <ul class="scope-list compact">
+      {% for desc in item.scope_descriptions %}
+      <li><span class="check">✓</span><div><strong>{{ desc }}</strong></div></li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="{% url 'disconnect_app' item.application.id %}">
+      {% csrf_token %}
+      <button type="submit" class="btn danger">Disconnect</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="panel">No connected applications yet. Connect Claude using the MCP URL from your dashboard.</p>
+{% endif %}
+{% endblock %}
