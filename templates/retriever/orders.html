@@ -4,28 +4,70 @@
 <section class="hero-block">
   <p class="eyebrow">Orders</p>
   <h1>Deployment &amp; return orders</h1>
+  <p class="lede">Create and manage orders for {% if active_organization %}{{ active_organization.name }}{% else %}your organization{% endif %}.</p>
 </section>
 
 <div class="grid-two">
   <section class="panel">
-    <h2>Deployment orders</h2>
-    <ul class="plain-list">
-      {% for o in deployment_orders %}
-      <li><strong>{{ o.reference }}</strong> <span class="muted">· {{ o.status }}</span></li>
-      {% empty %}
-      <li>None</li>
-      {% endfor %}
-    </ul>
+    <div class="panel-head">
+      <h2>Deployment orders</h2>
+      {% if active_organization %}
+      <a class="btn primary" href="{% url 'deployment_create' %}">New</a>
+      {% endif %}
+    </div>
+    {% if deployment_orders %}
+    <table class="data-table compact">
+      <thead>
+        <tr><th>Reference</th><th>Status</th><th>Device</th><th class="col-actions">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for o in deployment_orders %}
+        <tr>
+          <td><strong>{{ o.reference }}</strong></td>
+          <td><span class="badge soft">{{ o.status }}</span></td>
+          <td>{% if o.device %}{{ o.device.name }}{% else %}—{% endif %}</td>
+          <td class="col-actions">
+            <a class="text-link" href="{% url 'deployment_edit' o.id %}">Edit</a>
+            <a class="text-link danger-link" href="{% url 'deployment_delete' o.id %}">Delete</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted empty-inline">No deployment orders.</p>
+    {% endif %}
   </section>
+
   <section class="panel">
-    <h2>Return orders</h2>
-    <ul class="plain-list">
-      {% for o in return_orders %}
-      <li><strong>{{ o.reference }}</strong> <span class="muted">· {{ o.status }}</span></li>
-      {% empty %}
-      <li>None</li>
-      {% endfor %}
-    </ul>
+    <div class="panel-head">
+      <h2>Return orders</h2>
+      {% if active_organization %}
+      <a class="btn primary" href="{% url 'return_create' %}">New</a>
+      {% endif %}
+    </div>
+    {% if return_orders %}
+    <table class="data-table compact">
+      <thead>
+        <tr><th>Reference</th><th>Status</th><th>Device</th><th class="col-actions">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for o in return_orders %}
+        <tr>
+          <td><strong>{{ o.reference }}</strong></td>
+          <td><span class="badge soft">{{ o.status }}</span></td>
+          <td>{% if o.device %}{{ o.device.name }}{% else %}—{% endif %}</td>
+          <td class="col-actions">
+            <a class="text-link" href="{% url 'return_edit' o.id %}">Edit</a>
+            <a class="text-link danger-link" href="{% url 'return_delete' o.id %}">Delete</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted empty-inline">No return orders.</p>
+    {% endif %}
   </section>
 </div>
 {% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Confirm delete · Retriever{% endblock %}
+{% block content %}
+<section class="hero-block">
+  <p class="eyebrow">Confirm</p>
+  <h1>Delete {{ object_label }}?</h1>
+  <p class="lede">This cannot be undone.</p>
+</section>
+
+<section class="panel form-panel">
+  <form method="post" class="form-actions">
+    {% csrf_token %}
+    <button type="submit" class="btn danger">Delete</button>
+    <a class="btn" href="{% url cancel_url %}">Cancel</a>
+  </form>
+</section>
+{% endblock %}

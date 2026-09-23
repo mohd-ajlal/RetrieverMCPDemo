@@ -279,6 +279,7 @@ OAUTH2_PROVIDER = {
     "ROTATE_REFRESH_TOKEN": True,
     "SCOPES": {
         "retriever.devices.read": "View Retriever devices",
+        "retriever.devices.write": "Create and modify Retriever devices",
         "retriever.orders.read": "View deployment and return orders",
         "retriever.orders.write": "Create and modify demo orders",
         "offline_access": "Maintain access when you are not actively using the connector",
@@ -297,6 +298,7 @@ OAUTH2_PROVIDER = {
 # Scoped strings used by MCP tools
 RETRIEVER_SCOPES = {
     "retriever.devices.read": "View Retriever devices",
+    "retriever.devices.write": "Create and modify Retriever devices",
     "retriever.orders.read": "View deployment and return orders",
     "retriever.orders.write": "Create and modify demo orders",
 }

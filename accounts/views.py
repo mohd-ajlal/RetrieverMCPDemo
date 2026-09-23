@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -5,11 +6,23 @@ from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
+from oauth2_provider.models import AccessToken, Grant, RefreshToken
 
 from accounts.forms import LoginForm, SignupForm
+from oauth_server.models import OAuthAuthorizationContext
 from organizations.models import Organization, OrganizationMembership, UserProfile
 
 User = get_user_model()
+
+
+def _revoke_user_oauth(user) -> int:
+    """Revoke all OAuth credentials for a user. Returns count of deleted access tokens."""
+    token_count = AccessToken.objects.filter(user=user).count()
+    AccessToken.objects.filter(user=user).delete()
+    RefreshToken.objects.filter(user=user).delete()
+    Grant.objects.filter(user=user).delete()
+    OAuthAuthorizationContext.objects.filter(user=user).delete()
+    return token_count
 
 
 @require_http_methods(["GET", "POST"])
@@ -76,7 +89,19 @@ def signup_view(request: HttpRequest) -> HttpResponse:
 
 @require_http_methods(["POST", "GET"])
 def logout_view(request: HttpRequest) -> HttpResponse:
-    logout(request)
+    if request.user.is_authenticated:
+        revoked = _revoke_user_oauth(request.user)
+        logout(request)
+        if revoked:
+            messages.info(
+                request,
+                "You signed out and all connected apps were disconnected. "
+                "Reconnect Claude after signing in again.",
+            )
+        else:
+            messages.info(request, "You have signed out.")
+    else:
+        logout(request)
     return redirect("login")
 
 

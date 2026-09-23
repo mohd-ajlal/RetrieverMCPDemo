@@ -1,26 +1,49 @@
 {% extends "base.html" %}
 {% block title %}Devices · Retriever{% endblock %}
 {% block content %}
-<section class="hero-block">
-  <p class="eyebrow">Inventory</p>
-  <h1>Devices</h1>
-  <p class="lede">Scoped to {% if active_organization %}{{ active_organization.name }}{% else %}no organization{% endif %}.</p>
+<section class="hero-block toolbar-hero">
+  <div>
+    <p class="eyebrow">Inventory</p>
+    <h1>Devices</h1>
+    <p class="lede">Scoped to {% if active_organization %}{{ active_organization.name }}{% else %}no organization{% endif %}.</p>
+  </div>
+  {% if active_organization %}
+  <a class="btn primary" href="{% url 'device_create' %}">Add device</a>
+  {% endif %}
 </section>
+
+{% if devices %}
 <table class="data-table">
   <thead>
-    <tr><th>Name</th><th>Type</th><th>Serial</th><th>Status</th></tr>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Serial</th>
+      <th>Status</th>
+      <th class="col-actions">Actions</th>
+    </tr>
   </thead>
   <tbody>
     {% for d in devices %}
     <tr>
       <td>{{ d.name }}</td>
       <td>{{ d.device_type }}</td>
-      <td><code>{{ d.serial_number }}</code></td>
-      <td>{{ d.status }}</td>
+      <td><code>{{ d.serial_number|default:"—" }}</code></td>
+      <td><span class="badge soft">{{ d.status }}</span></td>
+      <td class="col-actions">
+        <a class="text-link" href="{% url 'device_edit' d.id %}">Edit</a>
+        <a class="text-link danger-link" href="{% url 'device_delete' d.id %}">Delete</a>
+      </td>
     </tr>
-    {% empty %}
-    <tr><td colspan="4">No devices.</td></tr>
     {% endfor %}
   </tbody>
 </table>
+{% else %}
+<div class="panel empty-state">
+  <p>No devices yet.</p>
+  {% if active_organization %}
+  <a class="btn primary" href="{% url 'device_create' %}">Add your first device</a>
+  {% endif %}
+</div>
+{% endif %}
 {% endblock %}

@@ -126,6 +126,20 @@ class MCPAuthTenantTests(TestCase):
     def test_write_requires_scope_concept(self):
         read_only = frozenset(["retriever.devices.read", "retriever.orders.read"])
         self.assertNotIn("retriever.orders.write", read_only)
+        self.assertNotIn("retriever.devices.write", read_only)
+
+    def test_device_write_scope_gate(self):
+        from mcp_server.tools import _require
+
+        ctx = AuthContext(
+            user_id=self.user.id,
+            organization_id=self.org.id,
+            scopes=frozenset(["retriever.devices.read"]),
+            oauth_client=self.app.name,
+        )
+        with self.assertRaises(Exception) as raised:
+            _require(ctx, "retriever.devices.write")
+        self.assertIn("retriever.devices.write", str(raised.exception))
 
     def test_update_permissions_removes_write_scope(self):
         self.client.login(username="demo_user", password="DemoPassword123!")

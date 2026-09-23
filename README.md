@@ -137,10 +137,24 @@ MCP tools read `organization_id` only from token claims. Tool arguments named `o
 | Scope | Meaning | Tools |
 |-------|---------|-------|
 | `retriever.devices.read` | View devices | `get_devices` |
+| `retriever.devices.write` | Create / update / delete devices | `create_device`, `update_device`, `delete_device` |
 | `retriever.orders.read` | View orders | `get_deployment_orders`, `get_return_orders` |
-| `retriever.orders.write` | Create demo orders | `create_test_deployment_order` |
+| `retriever.orders.write` | Create / update / delete orders | `create_deployment_order`, `update_deployment_order`, `delete_deployment_order`, `create_return_order`, `update_return_order`, `delete_return_order`, `create_test_deployment_order` |
 
 Each MCP tool calls `_require(ctx, scope)`. If the access token’s `scope` string does **not** include that permission, Claude gets `Forbidden: missing scope …` and the task does not run.
+
+Default OAuth scopes are **read-only** (`devices.read`, `orders.read`). Grant write scopes at consent or via Connected Apps.
+
+### Web inventory CRUD
+
+Signed-in users manage org data in the Retriever UI (session + CSRF), independent of MCP scopes:
+
+| Path | Actions |
+|------|---------|
+| `/devices/` | List, add, edit, delete devices |
+| `/orders/` | List, add, edit, delete deployment and return orders |
+
+All mutations go through `retriever.services` and are limited to the user’s **active organization**.
 
 ### Connected Apps permissions
 
@@ -152,6 +166,10 @@ Path: `/settings/connected-apps/`
 - Checking a previously removed scope restores it without a new OAuth dance
 - **Disconnect** deletes access/refresh tokens and org context (full revoke)
 - `offline_access` is not shown as a toggle; if present on the token it is preserved across saves
+
+### Logout and Claude
+
+Signing out of the Retriever website **revokes all OAuth access/refresh tokens and grants** for that user (same effect as Disconnect on every connected app). Claude cannot keep calling MCP after logout; reconnect after signing in again.
 
 ---
 
@@ -369,7 +387,7 @@ WebSockets are not required for this demo.
 pytest
 ```
 
-Coverage includes session auth, OAuth (PKCE, deny/allow, code reuse, discovery), token audience, tenant isolation, MCP 401 challenge, connected-app revoke, and Connected Apps permission edits (scope add/remove enforcement).
+Coverage includes session auth, OAuth (PKCE, deny/allow, code reuse, discovery), token audience, tenant isolation, MCP 401 challenge, connected-app revoke, Connected Apps permission edits, **logout OAuth revoke**, and **web device/order CRUD**.
 
 ---
 
@@ -383,6 +401,7 @@ Coverage includes session auth, OAuth (PKCE, deny/allow, code reuse, discovery),
 | `invalid_grant` | Code expired (60s) or reused; PKCE verifier mismatch |
 | Empty devices | Org binding at consent; active org when allowing |
 | 401 after Disconnect | Expected — tokens revoked |
+| 401 / auth failure after website logout | Expected — logout revokes all OAuth tokens; reconnect Claude |
 | Claude tool `Forbidden: missing scope …` | Connected Apps → re-check that permission and Save, or reconnect with broader scopes |
 
 ---

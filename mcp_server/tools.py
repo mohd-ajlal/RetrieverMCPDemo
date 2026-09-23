@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_access_token
@@ -36,6 +37,16 @@ def _auth_context() -> AuthContext:
 def _require(ctx: AuthContext, scope: str) -> None:
     if scope not in ctx.scopes:
         raise ToolError(f"Forbidden: missing scope {scope}")
+
+
+def _map_service_error(exc: Exception) -> ToolError:
+    if isinstance(exc, ObjectDoesNotExist):
+        return ToolError("Not found")
+    if isinstance(exc, ValidationError):
+        return ToolError(str(exc))
+    if isinstance(exc, PermissionError):
+        return ToolError(str(exc))
+    return ToolError("Request failed")
 
 
 def register_tools(mcp: FastMCP) -> None:
@@ -80,7 +91,6 @@ def register_tools(mcp: FastMCP) -> None:
         """
         ctx = _auth_context()
         _require(ctx, "retriever.devices.read")
-        # Explicitly ignore client-supplied organization_id
         _ = organization_id
         try:
             result = DeviceService.get_devices(organization_id=ctx.organization_id)
@@ -89,6 +99,77 @@ def register_tools(mcp: FastMCP) -> None:
         except Exception as exc:
             write_audit(ctx, "get_devices", "failure", str(exc))
             raise ToolError("Failed to list devices") from exc
+
+    @mcp.tool()
+    def create_device(
+        name: str,
+        serial_number: str = "",
+        device_type: str = "laptop",
+        status: str = "available",
+        organization_id: int | None = None,
+    ) -> dict:
+        """Create a device in the authenticated organization."""
+        ctx = _auth_context()
+        _require(ctx, "retriever.devices.write")
+        _ = organization_id
+        try:
+            result = DeviceService.create_device(
+                ctx.organization_id,
+                name=name,
+                serial_number=serial_number,
+                device_type=device_type,
+                status=status,
+            )
+            write_audit(ctx, "create_device", "success", result["name"])
+            return result
+        except Exception as exc:
+            write_audit(ctx, "create_device", "failure", str(exc))
+            raise _map_service_error(exc) from exc
+
+    @mcp.tool()
+    def update_device(
+        device_id: int,
+        name: str | None = None,
+        serial_number: str | None = None,
+        device_type: str | None = None,
+        status: str | None = None,
+        organization_id: int | None = None,
+    ) -> dict:
+        """Update a device in the authenticated organization."""
+        ctx = _auth_context()
+        _require(ctx, "retriever.devices.write")
+        _ = organization_id
+        try:
+            result = DeviceService.update_device(
+                ctx.organization_id,
+                device_id,
+                name=name,
+                serial_number=serial_number,
+                device_type=device_type,
+                status=status,
+            )
+            write_audit(ctx, "update_device", "success", str(device_id))
+            return result
+        except Exception as exc:
+            write_audit(ctx, "update_device", "failure", str(exc))
+            raise _map_service_error(exc) from exc
+
+    @mcp.tool()
+    def delete_device(
+        device_id: int,
+        organization_id: int | None = None,
+    ) -> dict:
+        """Delete a device in the authenticated organization."""
+        ctx = _auth_context()
+        _require(ctx, "retriever.devices.write")
+        _ = organization_id
+        try:
+            DeviceService.delete_device(ctx.organization_id, device_id)
+            write_audit(ctx, "delete_device", "success", str(device_id))
+            return {"deleted": True, "device_id": device_id}
+        except Exception as exc:
+            write_audit(ctx, "delete_device", "failure", str(exc))
+            raise _map_service_error(exc) from exc
 
     @mcp.tool()
     def get_deployment_orders(organization_id: int | None = None) -> list[dict]:
@@ -121,6 +202,152 @@ def register_tools(mcp: FastMCP) -> None:
             raise ToolError("Failed to list return orders") from exc
 
     @mcp.tool()
+    def create_deployment_order(
+        reference: str,
+        status: str = "pending",
+        notes: str = "",
+        device_id: int | None = None,
+        organization_id: int | None = None,
+    ) -> dict:
+        """Create a deployment order in the authenticated organization."""
+        ctx = _auth_context()
+        _require(ctx, "retriever.orders.write")
+        _ = organization_id
+        try:
+            result = OrderService.create_deployment_order(
+                ctx.organization_id,
+                reference=reference,
+                status=status,
+                notes=notes,
+                device_id=device_id,
+            )
+            write_audit(ctx, "create_deployment_order", "success", result["reference"])
+            return result
+        except Exception as exc:
+            write_audit(ctx, "create_deployment_order", "failure", str(exc))
+            raise _map_service_error(exc) from exc
+
+    @mcp.tool()
+    def update_deployment_order(
+        order_id: int,
+        reference: str | None = None,
+        status: str | None = None,
+        notes: str | None = None,
+        device_id: int | None = None,
+        clear_device: bool = False,
+        organization_id: int | None = None,
+    ) -> dict:
+        """Update a deployment order in the authenticated organization."""
+        ctx = _auth_context()
+        _require(ctx, "retriever.orders.write")
+        _ = organization_id
+        try:
+            result = OrderService.update_deployment_order(
+                ctx.organization_id,
+                order_id,
+                reference=reference,
+                status=status,
+                notes=notes,
+                device_id=device_id,
+                clear_device=clear_device,
+            )
+            write_audit(ctx, "update_deployment_order", "success", str(order_id))
+            return result
+        except Exception as exc:
+            write_audit(ctx, "update_deployment_order", "failure", str(exc))
+            raise _map_service_error(exc) from exc
+
+    @mcp.tool()
+    def delete_deployment_order(
+        order_id: int,
+        organization_id: int | None = None,
+    ) -> dict:
+        """Delete a deployment order in the authenticated organization."""
+        ctx = _auth_context()
+        _require(ctx, "retriever.orders.write")
+        _ = organization_id
+        try:
+            OrderService.delete_deployment_order(ctx.organization_id, order_id)
+            write_audit(ctx, "delete_deployment_order", "success", str(order_id))
+            return {"deleted": True, "order_id": order_id}
+        except Exception as exc:
+            write_audit(ctx, "delete_deployment_order", "failure", str(exc))
+            raise _map_service_error(exc) from exc
+
+    @mcp.tool()
+    def create_return_order(
+        reference: str,
+        status: str = "pending",
+        notes: str = "",
+        device_id: int | None = None,
+        organization_id: int | None = None,
+    ) -> dict:
+        """Create a return order in the authenticated organization."""
+        ctx = _auth_context()
+        _require(ctx, "retriever.orders.write")
+        _ = organization_id
+        try:
+            result = OrderService.create_return_order(
+                ctx.organization_id,
+                reference=reference,
+                status=status,
+                notes=notes,
+                device_id=device_id,
+            )
+            write_audit(ctx, "create_return_order", "success", result["reference"])
+            return result
+        except Exception as exc:
+            write_audit(ctx, "create_return_order", "failure", str(exc))
+            raise _map_service_error(exc) from exc
+
+    @mcp.tool()
+    def update_return_order(
+        order_id: int,
+        reference: str | None = None,
+        status: str | None = None,
+        notes: str | None = None,
+        device_id: int | None = None,
+        clear_device: bool = False,
+        organization_id: int | None = None,
+    ) -> dict:
+        """Update a return order in the authenticated organization."""
+        ctx = _auth_context()
+        _require(ctx, "retriever.orders.write")
+        _ = organization_id
+        try:
+            result = OrderService.update_return_order(
+                ctx.organization_id,
+                order_id,
+                reference=reference,
+                status=status,
+                notes=notes,
+                device_id=device_id,
+                clear_device=clear_device,
+            )
+            write_audit(ctx, "update_return_order", "success", str(order_id))
+            return result
+        except Exception as exc:
+            write_audit(ctx, "update_return_order", "failure", str(exc))
+            raise _map_service_error(exc) from exc
+
+    @mcp.tool()
+    def delete_return_order(
+        order_id: int,
+        organization_id: int | None = None,
+    ) -> dict:
+        """Delete a return order in the authenticated organization."""
+        ctx = _auth_context()
+        _require(ctx, "retriever.orders.write")
+        _ = organization_id
+        try:
+            OrderService.delete_return_order(ctx.organization_id, order_id)
+            write_audit(ctx, "delete_return_order", "success", str(order_id))
+            return {"deleted": True, "order_id": order_id}
+        except Exception as exc:
+            write_audit(ctx, "delete_return_order", "failure", str(exc))
+            raise _map_service_error(exc) from exc
+
+    @mcp.tool()
     def create_test_deployment_order(
         notes: str = "Created via MCP demo tool",
         organization_id: int | None = None,
@@ -134,11 +361,10 @@ def register_tools(mcp: FastMCP) -> None:
                 organization_id=ctx.organization_id,
                 notes=notes,
             )
-            write_audit(ctx, "create_test_deployment_order", "success", result["reference"])
+            write_audit(
+                ctx, "create_test_deployment_order", "success", result["reference"]
+            )
             return result
-        except PermissionError as exc:
-            write_audit(ctx, "create_test_deployment_order", "failure", str(exc))
-            raise ToolError(str(exc)) from exc
         except Exception as exc:
             write_audit(ctx, "create_test_deployment_order", "failure", str(exc))
-            raise ToolError("Failed to create deployment order") from exc
+            raise _map_service_error(exc) from exc
