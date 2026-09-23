@@ -28,8 +28,33 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
-PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
-MCP_RESOURCE_URL = os.environ.get("MCP_RESOURCE_URL", f"{PUBLIC_BASE_URL}/mcp").rstrip("/")
+def _is_loopback_url(url: str) -> bool:
+    lowered = (url or "").lower()
+    return "127.0.0.1" in lowered or "localhost" in lowered
+
+
+def _resolve_public_base_url() -> str:
+    """Prefer explicit non-loopback PUBLIC_BASE_URL; else Vercel-injected hosts."""
+    explicit = (os.environ.get("PUBLIC_BASE_URL") or "").strip().rstrip("/")
+    if explicit and not _is_loopback_url(explicit):
+        return explicit
+    # Vercel always injects these on deployments (no dashboard setup required).
+    vercel_prod = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL") or "").strip().rstrip("/")
+    if vercel_prod:
+        return f"https://{vercel_prod}"
+    vercel_url = (os.environ.get("VERCEL_URL") or "").strip().rstrip("/")
+    if vercel_url:
+        return f"https://{vercel_url}"
+    return explicit or "http://127.0.0.1:8000"
+
+
+PUBLIC_BASE_URL = _resolve_public_base_url()
+_mcp_explicit = (os.environ.get("MCP_RESOURCE_URL") or "").strip().rstrip("/")
+MCP_RESOURCE_URL = (
+    _mcp_explicit
+    if _mcp_explicit and not _is_loopback_url(_mcp_explicit)
+    else f"{PUBLIC_BASE_URL}/mcp"
+)
 
 CSRF_TRUSTED_ORIGINS = [
     o.strip()
@@ -39,6 +64,9 @@ CSRF_TRUSTED_ORIGINS = [
     ).split(",")
     if o.strip()
 ]
+# Ensure the resolved public origin is trusted (Vercel HTTPS signup/OAuth).
+if PUBLIC_BASE_URL.startswith("https://") and PUBLIC_BASE_URL not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(PUBLIC_BASE_URL)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -219,8 +247,11 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "Lax"
 
-if not DEBUG:
+_ON_VERCEL = bool(os.environ.get("VERCEL"))
+if not DEBUG or _ON_VERCEL:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    USE_X_FORWARDED_HOST = True
+if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "true").lower() in (

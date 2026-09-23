@@ -17,16 +17,23 @@ from organizations.models import UserProfile
 SCOPE_DESCRIPTIONS = getattr(settings, "RETRIEVER_SCOPES", {})
 
 
+def _is_loopback_url(url: str) -> bool:
+    lowered = (url or "").lower()
+    return "127.0.0.1" in lowered or "localhost" in lowered
+
+
 def _public_base(request: HttpRequest) -> str:
     configured = getattr(settings, "PUBLIC_BASE_URL", "").rstrip("/")
-    if configured and not settings.DEBUG:
+    # Use configured non-loopback URL in production; otherwise derive from request
+    # so Vercel works even when env still has local .env defaults.
+    if configured and not settings.DEBUG and not _is_loopback_url(configured):
         return configured
     return request.build_absolute_uri("/").rstrip("/")
 
 
 def _mcp_resource_url(request: HttpRequest) -> str:
     configured = getattr(settings, "MCP_RESOURCE_URL", "").rstrip("/")
-    if configured:
+    if configured and not settings.DEBUG and not _is_loopback_url(configured):
         return configured
     return f"{_public_base(request)}/mcp"
 
