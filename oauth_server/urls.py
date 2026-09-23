@@ -27,6 +27,11 @@ urlpatterns = [
     path("o/register/", views.dynamic_client_registration, name="oauth_dcr"),
     path("settings/connected-apps/", views.connected_apps_view, name="connected_apps"),
     path(
+        "settings/connected-apps/<int:application_id>/permissions/",
+        views.update_app_permissions,
+        name="update_app_permissions",
+    ),
+    path(
         "settings/connected-apps/<int:application_id>/disconnect/",
         views.disconnect_app,
         name="disconnect_app",

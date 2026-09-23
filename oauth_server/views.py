@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
@@ -15,6 +16,32 @@ from organizations.models import UserProfile
 
 
 SCOPE_DESCRIPTIONS = getattr(settings, "RETRIEVER_SCOPES", {})
+OFFLINE_ACCESS_SCOPE = "offline_access"
+
+
+def _build_available_scopes(granted: list[str]) -> list[dict]:
+    granted_set = set(granted)
+    return [
+        {
+            "scope": scope,
+            "description": description,
+            "granted": scope in granted_set,
+        }
+        for scope, description in SCOPE_DESCRIPTIONS.items()
+    ]
+
+
+def _normalize_selected_scopes(
+    selected: list[str], existing_scope: str
+) -> str:
+    """Keep only RETRIEVER_SCOPES; preserve offline_access if already granted."""
+    allowed = set(SCOPE_DESCRIPTIONS.keys())
+    chosen = [s for s in selected if s in allowed]
+    # Stable order matching RETRIEVER_SCOPES declaration
+    ordered = [s for s in SCOPE_DESCRIPTIONS.keys() if s in chosen]
+    if OFFLINE_ACCESS_SCOPE in (existing_scope or "").split():
+        ordered.append(OFFLINE_ACCESS_SCOPE)
+    return " ".join(ordered)
 
 
 def _is_loopback_url(url: str) -> bool:
@@ -195,8 +222,11 @@ def connected_apps_view(request: HttpRequest) -> HttpResponse:
             {
                 "application": token.application,
                 "scopes": scopes,
+                "available_scopes": _build_available_scopes(scopes),
                 "scope_descriptions": [
-                    SCOPE_DESCRIPTIONS.get(s, s) for s in scopes if s != "offline_access"
+                    SCOPE_DESCRIPTIONS.get(s, s)
+                    for s in scopes
+                    if s != OFFLINE_ACCESS_SCOPE
                 ],
                 "token_id": token.pk,
             }
@@ -206,6 +236,34 @@ def connected_apps_view(request: HttpRequest) -> HttpResponse:
         "oauth_server/connected_apps.html",
         {"page": "connected_apps", "connected_apps": apps},
     )
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_app_permissions(request: HttpRequest, application_id: int) -> HttpResponse:
+    app = Application.objects.filter(pk=application_id).first()
+    if app is None:
+        return redirect("connected_apps")
+
+    tokens = AccessToken.objects.filter(user=request.user, application=app)
+    if not tokens.exists():
+        return HttpResponseForbidden("Application is not connected for this user.")
+
+    selected = request.POST.getlist("scopes")
+    # Use newest token's scope as the offline_access source of truth
+    newest = tokens.order_by("-created").first()
+    new_scope = _normalize_selected_scopes(selected, newest.scope if newest else "")
+
+    tokens.update(scope=new_scope)
+    OAuthAuthorizationContext.objects.filter(
+        user=request.user, application=app
+    ).update(scopes=new_scope)
+
+    messages.success(
+        request,
+        f"Permissions updated for {app.name}. Changes apply to Claude on the next tool call.",
+    )
+    return redirect("connected_apps")
 
 
 @login_required

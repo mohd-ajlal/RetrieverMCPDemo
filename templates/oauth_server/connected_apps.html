@@ -4,7 +4,11 @@
 <section class="hero-block">
   <p class="eyebrow">Settings</p>
   <h1>Connected applications</h1>
-  <p class="lede">OAuth clients authorized to call Retriever MCP on your behalf. Disconnect revokes access tokens.</p>
+  <p class="lede">
+    OAuth clients authorized to call Retriever MCP on your behalf.
+    Uncheck a permission to block that capability in Claude immediately.
+    Disconnect revokes all access tokens.
+  </p>
 </section>
 
 {% if connected_apps %}
@@ -16,12 +20,29 @@
       <span class="badge ok">Connected</span>
     </div>
     <p class="label">Permissions</p>
-    <ul class="scope-list compact">
-      {% for desc in item.scope_descriptions %}
-      <li><span class="check">✓</span><div><strong>{{ desc }}</strong></div></li>
-      {% endfor %}
-    </ul>
-    <form method="post" action="{% url 'disconnect_app' item.application.id %}">
+    <form method="post" action="{% url 'update_app_permissions' item.application.id %}" class="permissions-form">
+      {% csrf_token %}
+      <ul class="scope-list compact">
+        {% for row in item.available_scopes %}
+        <li>
+          <label class="scope-toggle">
+            <input
+              type="checkbox"
+              name="scopes"
+              value="{{ row.scope }}"
+              {% if row.granted %}checked{% endif %}
+            >
+            <span>
+              <strong>{{ row.description }}</strong>
+              <code>{{ row.scope }}</code>
+            </span>
+          </label>
+        </li>
+        {% endfor %}
+      </ul>
+      <button type="submit" class="btn primary">Save permissions</button>
+    </form>
+    <form method="post" action="{% url 'disconnect_app' item.application.id %}" class="disconnect-form">
       {% csrf_token %}
       <button type="submit" class="btn danger">Disconnect</button>
     </form>

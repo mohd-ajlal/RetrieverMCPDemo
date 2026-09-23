@@ -245,6 +245,20 @@ h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
   color: var(--muted);
   margin-top: 0.15rem;
 }
+.scope-toggle {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  width: 100%;
+  cursor: pointer;
+}
+.scope-toggle input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+.permissions-form { margin-bottom: 0.85rem; }
+.permissions-form .btn { margin-top: 0.25rem; }
+.disconnect-form { margin-top: 0.35rem; }
 .consent-actions {
   display: flex;
   gap: 0.65rem;

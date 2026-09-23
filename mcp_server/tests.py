@@ -127,6 +127,112 @@ class MCPAuthTenantTests(TestCase):
         read_only = frozenset(["retriever.devices.read", "retriever.orders.read"])
         self.assertNotIn("retriever.orders.write", read_only)
 
+    def test_update_permissions_removes_write_scope(self):
+        self.client.login(username="demo_user", password="DemoPassword123!")
+        resp = self.client.post(
+            f"/settings/connected-apps/{self.app.id}/permissions/",
+            {
+                "scopes": [
+                    "retriever.devices.read",
+                    "retriever.orders.read",
+                ]
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.token.refresh_from_db()
+        scopes = set(self.token.scope.split())
+        self.assertIn("retriever.devices.read", scopes)
+        self.assertIn("retriever.orders.read", scopes)
+        self.assertNotIn("retriever.orders.write", scopes)
+
+        ctx = OAuthAuthorizationContext.objects.get(
+            user=self.user, application=self.app
+        )
+        self.assertNotIn("retriever.orders.write", ctx.scopes.split())
+
+        verifier = DjangoAccessTokenVerifier()
+        access = async_to_sync(verifier.verify_token)(self.token.token)
+        self.assertIsNotNone(access)
+        self.assertNotIn("retriever.orders.write", access.scopes)
+
+        from mcp_server.tools import _require
+
+        auth_ctx = AuthContext(
+            user_id=self.user.id,
+            organization_id=self.org.id,
+            scopes=frozenset(access.scopes),
+            oauth_client=self.app.name,
+        )
+        with self.assertRaises(Exception) as raised:
+            _require(auth_ctx, "retriever.orders.write")
+        self.assertIn("retriever.orders.write", str(raised.exception))
+        # Read scope still allowed
+        _require(auth_ctx, "retriever.devices.read")
+
+    def test_update_permissions_adds_write_scope(self):
+        self.token.scope = "retriever.devices.read retriever.orders.read"
+        self.token.save(update_fields=["scope"])
+        OAuthAuthorizationContext.objects.filter(
+            user=self.user, application=self.app
+        ).update(scopes=self.token.scope)
+
+        self.client.login(username="demo_user", password="DemoPassword123!")
+        resp = self.client.post(
+            f"/settings/connected-apps/{self.app.id}/permissions/",
+            {
+                "scopes": [
+                    "retriever.devices.read",
+                    "retriever.orders.read",
+                    "retriever.orders.write",
+                ]
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.token.refresh_from_db()
+        self.assertIn("retriever.orders.write", self.token.scope.split())
+
+    def test_update_permissions_ignores_unknown_scopes(self):
+        self.client.login(username="demo_user", password="DemoPassword123!")
+        resp = self.client.post(
+            f"/settings/connected-apps/{self.app.id}/permissions/",
+            {
+                "scopes": [
+                    "retriever.devices.read",
+                    "evil.admin",
+                    "offline_access",
+                ]
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.token.refresh_from_db()
+        scopes = self.token.scope.split()
+        self.assertEqual(scopes, ["retriever.devices.read"])
+
+    def test_update_permissions_preserves_offline_access(self):
+        self.token.scope = (
+            "retriever.devices.read retriever.orders.read offline_access"
+        )
+        self.token.save(update_fields=["scope"])
+        self.client.login(username="demo_user", password="DemoPassword123!")
+        resp = self.client.post(
+            f"/settings/connected-apps/{self.app.id}/permissions/",
+            {"scopes": ["retriever.devices.read"]},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.token.refresh_from_db()
+        scopes = self.token.scope.split()
+        self.assertEqual(scopes, ["retriever.devices.read", "offline_access"])
+
+    def test_update_permissions_forbidden_for_other_user(self):
+        User.objects.create_user(username="other", password="OtherPass123!")
+        self.client.login(username="other", password="OtherPass123!")
+        resp = self.client.post(
+            f"/settings/connected-apps/{self.app.id}/permissions/",
+            {"scopes": ["retriever.devices.read"]},
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.token.refresh_from_db()
+        self.assertIn("retriever.orders.write", self.token.scope.split())
     def test_discovery_and_mcp_unauthenticated(self):
         resp = self.client.get("/.well-known/oauth-protected-resource")
         self.assertEqual(resp.status_code, 200)

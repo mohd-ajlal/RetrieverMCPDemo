@@ -101,9 +101,10 @@ Session cookies: HttpOnly, SameSite=Lax, Secure when `DEBUG=false`.
 Consent is a **Retriever-branded Django template** (`templates/oauth2_provider/authorize.html`).
 
 - Shows signed-in user, active organization, human-readable scopes
-- **Allow** records org binding (`OAuthAuthorizationContext`) and issues a code
+- **Allow** records org binding (`OAuthAuthorizationContext`) and issues a code with the client-requested scope set
 - **Deny** returns `error=access_denied` (no code, no token)
 - Client secret / access token / auth code never enter React or localStorage
+- After connect, users manage which scopes remain active on **Connected Apps** (see §10) without re-running OAuth
 
 ---
 
@@ -138,6 +139,19 @@ MCP tools read `organization_id` only from token claims. Tool arguments named `o
 | `retriever.devices.read` | View devices | `get_devices` |
 | `retriever.orders.read` | View orders | `get_deployment_orders`, `get_return_orders` |
 | `retriever.orders.write` | Create demo orders | `create_test_deployment_order` |
+
+Each MCP tool calls `_require(ctx, scope)`. If the access token’s `scope` string does **not** include that permission, Claude gets `Forbidden: missing scope …` and the task does not run.
+
+### Connected Apps permissions
+
+Path: `/settings/connected-apps/`
+
+- Lists OAuth clients with live (non-expired) tokens for the signed-in user
+- **Checkboxes** for each Retriever scope; **Save permissions** updates `AccessToken.scope` and `OAuthAuthorizationContext.scopes` immediately
+- Unchecking a scope blocks that capability in Claude on the next tool call (no reconnect required)
+- Checking a previously removed scope restores it without a new OAuth dance
+- **Disconnect** deletes access/refresh tokens and org context (full revoke)
+- `offline_access` is not shown as a toggle; if present on the token it is preserved across saves
 
 ---
 
@@ -355,7 +369,7 @@ WebSockets are not required for this demo.
 pytest
 ```
 
-Coverage includes session auth, OAuth (PKCE, deny/allow, code reuse, discovery), token audience, tenant isolation, MCP 401 challenge, connected-app revoke.
+Coverage includes session auth, OAuth (PKCE, deny/allow, code reuse, discovery), token audience, tenant isolation, MCP 401 challenge, connected-app revoke, and Connected Apps permission edits (scope add/remove enforcement).
 
 ---
 
@@ -369,6 +383,7 @@ Coverage includes session auth, OAuth (PKCE, deny/allow, code reuse, discovery),
 | `invalid_grant` | Code expired (60s) or reused; PKCE verifier mismatch |
 | Empty devices | Org binding at consent; active org when allowing |
 | 401 after Disconnect | Expected — tokens revoked |
+| Claude tool `Forbidden: missing scope …` | Connected Apps → re-check that permission and Save, or reconnect with broader scopes |
 
 ---
 
