@@ -88,14 +88,31 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-if os.environ.get("DATABASE_URL"):
-    url = urllib.parse.urlparse(os.environ["DATABASE_URL"])
+
+def _normalize_database_url(raw: str | None) -> str:
+    """Strip whitespace and wrapping quotes (common when pasting into Vercel UI)."""
+    if not raw:
+        return ""
+    value = raw.strip()
+    if (value.startswith('"') and value.endswith('"')) or (
+        value.startswith("'") and value.endswith("'")
+    ):
+        value = value[1:-1].strip()
+    return value
+
+
+_database_url = _normalize_database_url(os.environ.get("DATABASE_URL"))
+
+if _database_url:
+    url = urllib.parse.urlparse(_database_url)
     query = dict(urllib.parse.parse_qsl(url.query))
     db_name = url.path.lstrip("/")
-    # Neon/Supabase often use postgres://.../neondb?sslmode=require
     OPTIONS = {}
     if query.get("sslmode"):
-        OPTIONS["sslmode"] = query["sslmode"]
+        OPTIONS["sslmode"] = query["sslmode"].rstrip('"').rstrip("'")
+    # Neon pooler may send channel_binding; psycopg accepts it via options when present
+    if query.get("channel_binding"):
+        OPTIONS["channel_binding"] = query["channel_binding"].rstrip('"').rstrip("'")
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -115,6 +132,40 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+# region agent log
+try:
+    import json
+    import time
+
+    _log_path = BASE_DIR / ".cursor" / "debug-8cee01.log"
+    _log_path.parent.mkdir(parents=True, exist_ok=True)
+    _dbg = {
+        "sessionId": "8cee01",
+        "runId": "db-url-parse",
+        "hypothesisId": "A",
+        "location": "config/settings.py:DATABASES",
+        "message": "DATABASE_URL parse result (redacted)",
+        "data": {
+            "raw_present": bool(os.environ.get("DATABASE_URL")),
+            "raw_starts_with_quote": (os.environ.get("DATABASE_URL") or "").lstrip().startswith(
+                ('"', "'")
+            ),
+            "normalized_scheme": urllib.parse.urlparse(_database_url).scheme if _database_url else "",
+            "engine": DATABASES["default"]["ENGINE"],
+            "name": str(DATABASES["default"].get("NAME", ""))[:63],
+            "name_len": len(str(DATABASES["default"].get("NAME", ""))),
+            "host_set": bool(DATABASES["default"].get("HOST")),
+            "user_set": bool(DATABASES["default"].get("USER")),
+            "sslmode": (DATABASES["default"].get("OPTIONS") or {}).get("sslmode"),
+        },
+        "timestamp": int(time.time() * 1000),
+    }
+    with open(_log_path, "a", encoding="utf-8") as _f:
+        _f.write(json.dumps(_dbg) + "\n")
+except Exception:
+    pass
+# endregion
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
