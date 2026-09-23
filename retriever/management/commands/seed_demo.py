@@ -16,6 +16,7 @@ DEMO_PASSWORD = "DemoPassword123!"
 CLAUDE_REDIRECT_URIS = "\n".join(
     [
         "https://claude.ai/api/mcp/auth_callback",
+        "https://claude.com/api/mcp/auth_callback",
         "http://localhost/callback",
         "http://127.0.0.1/callback",
     ]

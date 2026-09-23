@@ -398,7 +398,8 @@ Coverage includes session auth, OAuth (PKCE, deny/allow, code reuse, discovery),
 | Claude “couldn’t reach MCP server” | Public HTTPS; PRM 401 header; Anthropic IP allowlist |
 | Consent never appears | User must complete browser login; check `next=` preserve |
 | `invalid_client` | Client ID/secret from seed; Advanced settings filled |
-| `invalid_grant` | Code expired (60s) or reused; PKCE verifier mismatch |
+| `invalid_grant` | Code expired (default 300s) or reused; PKCE verifier mismatch; click Allow promptly after consent loads |
+| Consent / connect hangs then Claude auth error | Neon/Vercel cold start — open https://your-app.vercel.app/login/ first to warm, stay signed in, reconnect; use DCR “Register automatically” |
 | Empty devices | Org binding at consent; active org when allowing |
 | 401 after Disconnect | Expected — tokens revoked |
 | 401 / auth failure after website logout | Expected — logout revokes all OAuth tokens; reconnect Claude |

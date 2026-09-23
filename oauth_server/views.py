@@ -307,6 +307,14 @@ def dynamic_client_registration(request: HttpRequest) -> JsonResponse:
             status=400,
         )
 
+    # Always accept both Claude.ai hosts used by web/desktop connectors.
+    for uri in (
+        "https://claude.ai/api/mcp/auth_callback",
+        "https://claude.com/api/mcp/auth_callback",
+    ):
+        if uri not in redirect_uris:
+            redirect_uris.append(uri)
+
     client_name = payload.get("client_name") or "Dynamically Registered MCP Client"
     token_endpoint_auth_method = payload.get("token_endpoint_auth_method") or "none"
     client_type = (

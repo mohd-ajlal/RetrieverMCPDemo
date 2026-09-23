@@ -271,7 +271,7 @@ OAUTH2_PROVIDER = {
     "OIDC_ENABLED": False,
     "ACCESS_TOKEN_EXPIRE_SECONDS": int(os.environ.get("ACCESS_TOKEN_EXPIRE_SECONDS", "3600")),
     "AUTHORIZATION_CODE_EXPIRE_SECONDS": int(
-        os.environ.get("AUTHORIZATION_CODE_EXPIRE_SECONDS", "60")
+        os.environ.get("AUTHORIZATION_CODE_EXPIRE_SECONDS", "300")
     ),
     "REFRESH_TOKEN_EXPIRE_SECONDS": int(
         os.environ.get("REFRESH_TOKEN_EXPIRE_SECONDS", "86400")
@@ -288,7 +288,11 @@ OAUTH2_PROVIDER = {
         "retriever.devices.read",
         "retriever.orders.read",
     ],
-    "REQUEST_APPROVAL_PROMPT": "force",
+    # Skip consent UI when this user already authorized the same client+scopes.
+    # Speeds Claude reconnect; first connect still shows Allow.
+    "REQUEST_APPROVAL_PROMPT": os.environ.get(
+        "OAUTH_REQUEST_APPROVAL_PROMPT", "auto"
+    ),
     "ERROR_RESPONSE_WITH_SCOPES": True,
     "RESOURCE_SERVER_TOKEN_RESOURCE_VALIDATOR": (
         "oauth_server.validators.exact_resource_match"
