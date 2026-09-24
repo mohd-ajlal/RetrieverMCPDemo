@@ -2,7 +2,8 @@
 
 This document explains **how the system works end-to-end**: architecture, request flows, data model, permissions, deployment, and security. It is written so engineers and product folks can understand the design without reading every file first.
 
-For setup commands and Claude connector steps, see [README.md](README.md).
+For setup commands and Claude connector steps, see [README.md](README.md).  
+For a reusable **how to implement MCP OAuth auth** guide, see [mcp_authentication.md](mcp_authentication.md).
 
 ---
 

@@ -4,7 +4,8 @@ Production-style reference implementation showing how **Retriever** integrates w
 
 This is intentionally small, but security boundaries match what you would migrate into a real Retriever application.
 
-**System design (how everything works):** see [TECHNICAL.md](TECHNICAL.md).
+**System design (how everything works):** see [TECHNICAL.md](TECHNICAL.md).  
+**MCP OAuth auth guide (how to implement in any project):** see [mcp_authentication.md](mcp_authentication.md).
 
 ---
 
